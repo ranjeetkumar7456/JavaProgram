@@ -2,8 +2,8 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="Suite">
     <test name="PackageTest">
-        <packages>
-            <package name="Kaplan.ParallelExecutionExample"/>
-        </packages>
+        <classes>
+            <class name="Kaplan.Demo"></class>
+        </classes>
     </test>
 </suite>
