@@ -1,19 +1,25 @@
 package Roopal;
 
-public class MoveToRightSide_InArray {
-    public static void moveElement_RightSide(int[] arr, int moveElement){
+public class MoveToRightSide_InArray
+{
+    public static void moveElement_RightSide(int[] arr, int moveElement)
+    {
         int count=0;
         for(int i=0;i<arr.length;i++)
         {
-            if(arr[i]!=moveElement){
+            if(arr[i]!=moveElement)
+            {
                 arr[count++]=arr[i];
             }
         }
-        while(count<arr.length){
+        while(count<arr.length)
+        {
             arr[count++]=moveElement;
         }
         for(int i=0;i<arr.length;i++)
-            System.out.print(arr[i]+" ");
+        {
+            System.out.print(arr[i] + " ");
+        }
     }
 
     public static void moveElement_LeftSide(int[] arr,int moveElement)

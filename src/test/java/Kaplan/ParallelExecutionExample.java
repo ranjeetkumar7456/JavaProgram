@@ -9,7 +9,7 @@ import org.testng.annotations.*;
 
 public class ParallelExecutionExample {
 
-    private WebDriver driver;
+    /*private WebDriver driver;
 
     @BeforeMethod
     @Parameters("browser")
@@ -45,6 +45,14 @@ public class ParallelExecutionExample {
         if (driver != null) {
             driver.quit();
         }
+    }*/
+
+    @Test(threadPoolSize = 3, invocationCount = 6)
+
+    public void testMethod(String browser) {
+        System.out.println("Hello coder");
+
     }
+
 }
 

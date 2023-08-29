@@ -43,8 +43,12 @@ public class NearestPalindromeExample {
             {
                 return false;
             }
-            left++;
-            right--;
+            else
+            {
+                left++;
+                right--;
+            }
+
         }
 
         return true;
@@ -69,7 +73,7 @@ public class NearestPalindromeExample {
     }
     public static void main(String[] args)
     {
-        int number = 116;
+        int number = 117;
 
         int nearestPalindrome = findNearestPalindrome(number);
 

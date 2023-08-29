@@ -7,8 +7,10 @@ public class FindDuplicatesExample {
         HashSet<Integer> uniqueSet = new HashSet<>();
         HashSet<Integer> duplicateSet = new HashSet<>();
 
-        for (int number : numbers) {
-            if (!uniqueSet.add(number)) {
+        for (int number : numbers)
+        {
+            if (!uniqueSet.add(number))
+            {
                 duplicateSet.add(number);
             }
         }

@@ -42,11 +42,54 @@ public class test {
         }
     }
 
+    public static boolean isPalindrome(int number) {
+        char[] charArray = String.valueOf(number).toCharArray();
+        int left = 0;
+        int right = charArray.length - 1;
+        while (left < right) {
+            if (charArray[left] != charArray[right]) {
+                return false;
+            }
+            left++;
+            right--;
+        }
+        return true;
+    }
+
+    public static int nearestPalindrome(int number) {
+        if (isPalindrome(number)) {
+            return number;
+        }
+
+        int smallestPalindrome = number - 1;
+        while (!isPalindrome(smallestPalindrome)) {
+            smallestPalindrome--;
+        }
+
+        int largestPalindrome = number + 1;
+        while (!isPalindrome(largestPalindrome)) {
+            largestPalindrome++;
+        }
+
+        // Compare the differences and return the nearest palindrome
+        int diffSmallest = number - smallestPalindrome;
+        int diffLargest = largestPalindrome - number;
+        if (diffSmallest < diffLargest) {
+            return smallestPalindrome;
+        } else {
+            return largestPalindrome;
+        }
+    }
+
     public static void main(String[] args) {
 
-        int[] arr = {10,20,20,50,50,45};
+        //int[] arr = {10,20,20,50,50,45};
 
-        removeDuplicate(arr);
+        //removeDuplicate(arr);
+
+        int number = 19;
+        int nearestPalindromeNumber = nearestPalindrome(number);
+        System.out.println("Nearest Palindrome of " + number + " is: " + nearestPalindromeNumber);
 
     }
 }

@@ -5,12 +5,15 @@ import java.util.Arrays;
 public class BubbleSortEasyImplementation
 {
     // perform the bubble sort
-    public static void bubbleSort(int array[]) {
+    public static void bubbleSort(int array[])
+    {
         int size = array.length;
         // loop to access each array element
         for (int i = 0; i < size - 1; i++)
+        {
             // loop to compare array elements
             for (int j = 0; j < size - i - 1; j++)
+            {
                 // compare two adjacent elements
                 // change > to < to sort in descending order
                 if (array[j] > array[j + 1])
@@ -21,6 +24,10 @@ public class BubbleSortEasyImplementation
                     array[j] = array[j + 1];
                     array[j + 1] = temp;
                 }
+            }
+
+        }
+
     }
 
     public static void main(String args[]) {

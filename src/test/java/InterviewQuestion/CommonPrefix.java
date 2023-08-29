@@ -20,19 +20,20 @@ public class CommonPrefix {
                 prefix = prefix.substring(0, prefix.length() - 1);
             }
         }
-
         return prefix;
     }
 
 
 
-    public static String findCommonPrefix_1(String[] strings) {
-        if (strings == null || strings.length == 0) {
+    public static String findCommonPrefix_1(String[] strings)
+    {
+        if (strings == null || strings.length == 0)
+        {
             return "";
         }
-
         int minLength = Integer.MAX_VALUE;
-        for (String str : strings) {
+        for (String str : strings)
+        {
             minLength = Math.min(minLength, str.length());
         }
 
@@ -49,7 +50,6 @@ public class CommonPrefix {
             }
             prefix.append(currentChar);
         }
-
         return prefix.toString();
     }
 /*
@@ -84,7 +84,6 @@ public class CommonPrefix {
         for (int i = 0; i < firstString.length(); i++)
         {
             char currentChar = firstString.charAt(i);
-
             for (int j = 1; j < arr.length; j++)
             {
                 if (i >= arr[j].length() || arr[j].charAt(i) != currentChar)
@@ -92,10 +91,8 @@ public class CommonPrefix {
                     return firstString.substring(0, commonPrefixLength);
                 }
             }
-
             commonPrefixLength++;
         }
-
         return firstString.substring(0, commonPrefixLength);
     }
 

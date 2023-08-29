@@ -7,7 +7,7 @@ public class rightRotationInArray {
         //Initialize array
         int [] arr = new int [] {1, 2, 3, 4, 5};
         //n determine the number of times an array should be rotated.
-        int n = 3;
+        int n = 2;
 
 
         //Displays original array

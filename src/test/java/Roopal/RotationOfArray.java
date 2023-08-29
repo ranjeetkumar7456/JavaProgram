@@ -40,10 +40,35 @@ public class RotationOfArray {
         System.out.println("Input Array After Right Rotation By "+n+" Positions :");
         System.out.println(Arrays.toString(inputArray));
     }
+
+    public static void rightExample(int[] arr, int d)
+    {
+        int n = arr.length;
+        int[] temp = new int [d];
+        for(int i=0;i<d;i++)
+        {
+            temp[i] = arr[n-d+i];
+        }
+
+        for(int i=n-1;i>=d;i--)
+        {
+            arr[i] = arr[i-d];
+        }
+
+        for(int i=0;i<d;i++)
+        {
+            arr[i] = temp[i];
+        }
+        System.out.println("Input Array After Right Rotation By "+d+" Positions :");
+        System.out.println(Arrays.toString(arr));
+
+    }
     public static void main(String[] args)
     {
-        //arrayLeftRotate(new int[] {1,2,3,4,5,6,7}, 4);
+        //arrayLeftRotate(new int[] {1,2,3,4,5,6,7}, 2);
 
         arrayRightRotate(new int[] {1,2,3,4,5,6,7}, 2);
+        System.out.println("----------------------");
+        rightExample(new int[] {1,2,3,4,5,6,7}, 2);
     }
 }

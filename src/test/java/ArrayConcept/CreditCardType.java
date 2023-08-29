@@ -2,6 +2,11 @@ package ArrayConcept;
 
 import java.util.Scanner;
 
+/*
+   Write java program validate the card type. Verify card accept 16 digit number only.
+   If the the sum of first four digit is equal to 16 then card is VISA else card is Master
+*/
+
 public class CreditCardType
 {
     public static String getCardType(String cardNumber)
