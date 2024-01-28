@@ -1,9 +1,13 @@
 package Roopal;
 
 public class LongestPalindromicSubstring {
-    public static String longestPalindrome(String s) {
+    public static String longestPalindrome(String s)
+    {
         int n = s.length();
-        if(n==1) return s;
+        if(n==1)
+        {
+            return s;
+        }
 
         int start = 0, end = 0;
 
@@ -12,8 +16,10 @@ public class LongestPalindromicSubstring {
 
             left = i-1;
             right = i+1;
-            while(left>=0 && right<n && s.charAt(left)==s.charAt(right)){
-                if(right-left+1 > end-start+1){
+            while(left>=0 && right<n && s.charAt(left)==s.charAt(right))
+            {
+                if(right-left+1 > end-start+1)
+                {
                     start = left;
                     end = right;
                 }
@@ -22,8 +28,10 @@ public class LongestPalindromicSubstring {
 
             left = i;
             right = i+1;
-            while(left>=0 && right<n && s.charAt(left)==s.charAt(right)){
-                if(right-left+1 > end-start+1){
+            while(left>=0 && right<n && s.charAt(left)==s.charAt(right))
+            {
+                if(right-left+1 > end-start+1)
+                {
                     start = left;
                     end = right;
                 }

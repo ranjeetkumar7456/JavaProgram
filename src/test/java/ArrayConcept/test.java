@@ -80,6 +80,27 @@ public class test {
             return largestPalindrome;
         }
     }
+    public static void reverse(int number)
+    {
+        int reverse=0;
+        while (number!=0)
+        {
+            int digit = number%10;
+            reverse = reverse*10+digit;
+            number=number/10;
+        }
+        System.out.println(reverse);
+    }
+    public static void reverInteger(int number)
+    {
+        String no= String.valueOf(number);
+        String reverse="";
+        for(int i = no.length()-1;i>=0;i--)
+        {
+            reverse=reverse+no.charAt(i);
+        }
+        System.out.println(reverse);
+    }
 
     public static void main(String[] args) {
 
@@ -88,8 +109,10 @@ public class test {
         //removeDuplicate(arr);
 
         int number = 19;
-        int nearestPalindromeNumber = nearestPalindrome(number);
-        System.out.println("Nearest Palindrome of " + number + " is: " + nearestPalindromeNumber);
-
+        int numbers=1234567890;
+        //int nearestPalindromeNumber = nearestPalindrome(number);
+        //System.out.println("Nearest Palindrome of " + number + " is: " + nearestPalindromeNumber);
+        reverse(numbers);
+        reverInteger(numbers);
     }
 }
