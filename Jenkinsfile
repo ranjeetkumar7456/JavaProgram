@@ -1,347 +1,296 @@
 pipeline {
-
     agent any
 
-    /*****************************
-     * CRON TRIGGER (RUN EVERY 1 MIN)
-     *****************************/
     triggers {
+        // Run every 1 minute
         cron('* * * * *')
     }
 
-    /*****************************
-     * GLOBAL OPTIONS
-     *****************************/
     options {
         timestamps()
         disableConcurrentBuilds()
-        timeout(time: 10, unit: 'MINUTES')
     }
 
-    /*****************************
-     * ALL STAGES
-     *****************************/
     stages {
 
-        /*************** 1. CHECKOUT CODE ***************/
         stage('Checkout Code') {
             steps {
                 echo '=== CHECKOUT CODE FROM GITHUB USING PERSONAL ACCESS TOKEN (PAT) ==='
-
                 withCredentials([string(credentialsId: 'github-pat', variable: 'GIT_PAT')]) {
                     bat '''
-                        echo Deleting old repo folder if exists...
+                        echo Cleaning workspace...
                         if exist repo rmdir /s /q repo
-
-                        echo Cloning latest code from GitHub...
-                        "C:\\Program Files\\Git\\bin\\git.exe" clone -b Java8Feature https://ranjeetkumar7456:%GIT_PAT%@github.com/ranjeetkumar7456/JavaPractice.git repo
-
-                        if %ERRORLEVEL% neq 0 (
-                            echo Git clone failed!
-                            exit /b 1
-                        )
                         
-                        echo ========== PROJECT STRUCTURE CHECK ==========
-                        echo Listing test directory...
-                        dir repo\\src\\test\\java\\Java8Example /b
+                        echo Cloning from Java8Feature branch...
+                        "C:\\Program Files\\Git\\bin\\git.exe" clone -b Java8Feature https://ranjeetkumar7456:%GIT_PAT%@github.com/ranjeetkumar7456/JavaPractice.git repo || exit /b 1
+                        
+                        echo Verifying Java8Example directory exists...
+                        if exist repo\\src\\test\\java\\Java8Example (
+                            echo Java8Example directory found!
+                            dir repo\\src\\test\\java\\Java8Example\\*.java /b
+                        ) else (
+                            echo ERROR: Java8Example directory not found in test folder!
+                            echo Checking all directories...
+                            dir repo\\src /s /b
+                        )
                     '''
                 }
             }
         }
 
-        /*************** 2. COMPILE JAVA FILES ***************/
-        stage('Compile All Classes') {
+        stage('Compile Java8Example Classes') {
             steps {
-                echo '=== COMPILING JAVA 8 EXAMPLE CLASSES FROM TEST DIRECTORY ==='
-
+                echo '=== COMPILING Java8Example CLASSES FROM TEST DIRECTORY ==='
                 bat '''
                     echo Creating bin directory...
                     if not exist repo\\bin mkdir repo\\bin
-
-                    echo Compiling Java 8 Example classes from test directory...
                     
-                    REM First, check if there are any dependencies in main/java
-                    if exist repo\\src\\main\\java (
-                        echo Main source directory exists, including in classpath...
-                        javac -d repo\\bin -cp "repo\\src\\main\\java" repo\\src\\test\\java\\Java8Example\\*.java
-                    ) else (
-                        echo Only compiling test classes...
+                    echo Checking for Java files...
+                    if exist repo\\src\\test\\java\\Java8Example\\*.java (
+                        echo Found Java files in test directory, compiling...
                         javac -d repo\\bin repo\\src\\test\\java\\Java8Example\\*.java
-                    )
-
-                    if %ERRORLEVEL% neq 0 (
-                        echo Java compilation failed! Trying alternative compilation...
                         
-                        REM Try compiling each file separately
-                        cd repo\\src\\test\\java\\Java8Example
-                        for %%f in (*.java) do (
-                            echo Compiling %%~nf.java...
-                            javac -d ..\\..\\..\\..\\bin %%f
+                        if %ERRORLEVEL% neq 0 (
+                            echo Compilation failed! Trying with main source directory...
+                            if exist repo\\src\\main\\java (
+                                echo Adding main source to classpath...
+                                javac -d repo\\bin -cp "repo\\src\\main\\java" repo\\src\\test\\java\\Java8Example\\*.java
+                            )
                         )
-                        cd ..\\..\\..\\..
+                    ) else (
+                        echo No Java files found in repo\\src\\test\\java\\Java8Example!
+                        echo Checking main directory as fallback...
+                        if exist repo\\src\\main\\java\\Java8Examples\\*.java (
+                            echo Found Java files in main directory...
+                            javac -d repo\\bin repo\\src\\main\\java\\Java8Examples\\*.java
+                        ) else (
+                            echo ERROR: No Java files found anywhere!
+                            exit /b 1
+                        )
                     )
                     
                     echo Checking compiled classes...
                     if exist repo\\bin\\Java8Example (
+                        echo Compiled Java8Example classes:
                         dir repo\\bin\\Java8Example /b
-                        echo Compilation successful!
+                    ) else if exist repo\\bin\\Java8Examples (
+                        echo Compiled Java8Examples classes:
+                        dir repo\\bin\\Java8Examples /b
                     ) else (
-                        echo No Java8Example package found in bin directory
+                        echo Checking bin directory...
                         dir repo\\bin /b
                     )
                 '''
             }
         }
 
-        /*************** 3. VERIFY AND RUN JAVA MODULES ***************/
-        stage('Verify Classes') {
+        stage('Run EmployeeDataProcessor') {
             steps {
-                echo '=== VERIFYING CLASSES HAVE MAIN METHOD ==='
-                
+                echo '=== RUNNING EmployeeDataProcessor CLASS ==='
                 bat '''
-                    echo Checking for main methods in Java8Example classes...
-                    cd repo
+                    echo Trying to run EmployeeDataProcessor...
                     
-                    for /f %%i in ('findstr /s /m "public static void main" src\\test\\java\\Java8Example\\*.java') do (
-                        echo Found main method in: %%i
-                        REM Extract just the filename without extension
-                        for %%j in ("%%i") do (
-                            set "filename=%%~nj"
-                        )
-                        echo Class with main: !filename!
-                    )
-                    
-                    echo List of all Java files:
-                    dir src\\test\\java\\Java8Example\\*.java /b
-                '''
-            }
-        }
-
-        /*************** 4. RUN ALL JAVA MODULES (DYNAMIC APPROACH) ***************/
-        stage('Run All Java8Examples') {
-            steps {
-                echo '=== RUNNING ALL JAVA 8 EXAMPLE CLASSES ==='
-                
-                script {
-                    // Define the classes you want to run
-                    def java8Classes = [
-                        'EmployeeDataProcessor',
-                        'FinancialCalculator', 
-                        'InventoryManagementSystem',
-                        'MainExecutor',
-                        'OrderProcessingSystem'
-                    ]
-                    
-                    java8Classes.each { className ->
-                        stage("Run ${className}") {
-                            steps {
-                                script {
-                                    echo "=== RUNNING ${className} CLASS ==="
-                                    
-                                    bat """
-                                        cd repo
-                                        echo Checking if ${className}.class exists...
-                                        if exist bin\\Java8Example\\${className}.class (
-                                            echo Running ${className}...
-                                            java -cp bin Java8Example.${className}
-                                        ) else (
-                                            echo ${className}.class not found in bin\\Java8Example!
-                                            echo Available classes:
-                                            if exist bin\\Java8Example dir bin\\Java8Example /b
-                                        )
-                                    """
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /*************** 5. ALTERNATIVE: RUN ALL CLASSES AUTOMATICALLY ***************/
-        stage('Run All Classes Automatically') {
-            steps {
-                echo '=== RUNNING ALL CLASSES THAT HAVE MAIN METHOD ==='
-                
-                bat '''
-                    cd repo
-                    
-                    echo Finding and running all classes with main method...
-                    
-                    REM Create a temporary file to store class names
-                    echo. > classes_with_main.txt
-                    
-                    REM Find all Java files with main method
-                    for /f "tokens=*" %%i in ('findstr /s /m "public static void main" src\\test\\java\\Java8Example\\*.java') do (
-                        echo Processing %%i
-                        REM Get just the filename without extension
-                        for %%j in ("%%i") do (
-                            set "classname=%%~nj"
-                            echo !classname! >> classes_with_main.txt
-                        )
-                    )
-                    
-                    REM Read the file and run each class
-                    if exist classes_with_main.txt (
-                        echo Classes to run:
-                        type classes_with_main.txt
-                        
-                        for /f "tokens=*" %%c in (classes_with_main.txt) do (
-                            if not "%%c"=="" (
-                                echo.
-                                echo ========================================
-                                echo Running Java8Example.%%c
-                                echo ========================================
-                                java -cp bin Java8Example.%%c
-                                echo Exit code: !ERRORLEVEL!
-                            )
-                        )
-                        
-                        del classes_with_main.txt
+                    REM First try from test directory
+                    if exist repo\\bin\\Java8Example\\EmployeeDataProcessor.class (
+                        echo Running from Java8Example package...
+                        java -cp repo\\bin Java8Example.EmployeeDataProcessor
+                    ) else if exist repo\\bin\\Java8Examples\\EmployeeDataProcessor.class (
+                        echo Running from Java8Examples package...
+                        java -cp repo\\bin Java8Examples.EmployeeDataProcessor
                     ) else (
-                        echo No classes with main method found!
-                        
-                        echo Trying to run predefined classes...
-                        REM Fallback to predefined list
-                        for %%c in (EmployeeDataProcessor FinancialCalculator InventoryManagementSystem MainExecutor OrderProcessingSystem) do (
-                            echo Trying to run %%c...
-                            java -cp bin Java8Example.%%c 2>nul || echo %%c failed or not found
-                        )
+                        echo ERROR: EmployeeDataProcessor.class not found!
+                        echo Available classes in bin:
+                        dir repo\\bin\\* /b
                     )
                 '''
             }
         }
 
-        /*************** 6. EXTENT REPORT PLACEHOLDER ***************/
+        stage('Run FinancialCalculator') {
+            steps {
+                echo '=== RUNNING FinancialCalculator CLASS ==='
+                bat '''
+                    echo Trying to run FinancialCalculator...
+                    
+                    if exist repo\\bin\\Java8Example\\FinancialCalculator.class (
+                        java -cp repo\\bin Java8Example.FinancialCalculator
+                    ) else if exist repo\\bin\\Java8Examples\\FinancialCalculator.class (
+                        java -cp repo\\bin Java8Examples.FinancialCalculator
+                    ) else (
+                        echo FinancialCalculator.class not found, skipping...
+                    )
+                '''
+            }
+        }
+
+        stage('Run InventoryManagementSystem') {
+            steps {
+                echo '=== RUNNING InventoryManagementSystem CLASS ==='
+                bat '''
+                    echo Trying to run InventoryManagementSystem...
+                    
+                    if exist repo\\bin\\Java8Example\\InventoryManagementSystem.class (
+                        java -cp repo\\bin Java8Example.InventoryManagementSystem
+                    ) else if exist repo\\bin\\Java8Examples\\InventoryManagementSystem.class (
+                        java -cp repo\\bin Java8Examples.InventoryManagementSystem
+                    ) else (
+                        echo InventoryManagementSystem.class not found, skipping...
+                    )
+                '''
+            }
+        }
+
+        stage('Run MainExecutor') {
+            steps {
+                echo '=== RUNNING MainExecutor CLASS ==='
+                bat '''
+                    echo Trying to run MainExecutor...
+                    
+                    if exist repo\\bin\\Java8Example\\MainExecutor.class (
+                        java -cp repo\\bin Java8Example.MainExecutor
+                    ) else if exist repo\\bin\\Java8Examples\\MainExecutor.class (
+                        java -cp repo\\bin Java8Examples.MainExecutor
+                    ) else (
+                        echo MainExecutor.class not found, skipping...
+                    )
+                '''
+            }
+        }
+
+        stage('Run OrderProcessingSystem') {
+            steps {
+                echo '=== RUNNING OrderProcessingSystem CLASS ==='
+                bat '''
+                    echo Trying to run OrderProcessingSystem...
+                    
+                    if exist repo\\bin\\Java8Example\\OrderProcessingSystem.class (
+                        java -cp repo\\bin Java8Example.OrderProcessingSystem
+                    ) else if exist repo\\bin\\Java8Examples\\OrderProcessingSystem.class (
+                        java -cp repo\\bin Java8Examples.OrderProcessingSystem
+                    ) else (
+                        echo OrderProcessingSystem.class not found, skipping...
+                    )
+                '''
+            }
+        }
+
         stage('Generate Report') {
             steps {
                 echo '=== GENERATING EXECUTION REPORT ==='
-                
                 bat '''
-                    cd repo
-                    echo ========== EXECUTION SUMMARY ==========
-                    echo Execution completed at: %DATE% %TIME%
+                    echo Creating execution summary...
+                    echo "Java 8 Examples Execution Report" > repo\\execution_summary.txt
+                    echo "================================" >> repo\\execution_summary.txt
+                    echo "Timestamp: %DATE% %TIME%" >> repo\\execution_summary.txt
+                    echo "Branch: Java8Feature" >> repo\\execution_summary.txt
+                    echo "Build Number: ${BUILD_NUMBER}" >> repo\\execution_summary.txt
+                    echo "" >> repo\\execution_summary.txt
                     
-                    echo Creating summary report...
-                    echo "Java 8 Examples Execution Report" > execution_report.txt
-                    echo "================================" >> execution_report.txt
-                    echo "Timestamp: %DATE% %TIME%" >> execution_report.txt
-                    echo "Branch: Java8Feature" >> execution_report.txt
-                    echo "" >> execution_report.txt
-                    echo "Compiled Classes:" >> execution_report.txt
-                    if exist bin\\Java8Example (
-                        dir bin\\Java8Example /b >> execution_report.txt
+                    echo "Source Location: " >> repo\\execution_summary.txt
+                    if exist repo\\src\\test\\java\\Java8Example (
+                        echo "src/test/java/Java8Example" >> repo\\execution_summary.txt
+                        echo "Files found:" >> repo\\execution_summary.txt
+                        dir repo\\src\\test\\java\\Java8Example\\*.java /b >> repo\\execution_summary.txt
                     ) else (
-                        dir bin /b >> execution_report.txt
+                        echo "src/main/java/Java8Examples" >> repo\\execution_summary.txt
                     )
                     
-                    type execution_report.txt
+                    type repo\\execution_summary.txt
                 '''
-                
-                // Archive the report
-                archiveArtifacts artifacts: 'repo/execution_report.txt', fingerprint: true
             }
         }
     }
 
-    /*****************************
-     * POST BUILD ACTIONS
-     *****************************/
     post {
-
-        /*************** ALWAYS RUN ***************/
         always {
-            echo '=== PIPELINE FINISHED: CLEANING UP WORKSPACE ==='
+            echo '=== PIPELINE FINISHED ==='
             
-            // Archive compiled classes
+            // Archive artifacts
             archiveArtifacts artifacts: 'repo/bin/**/*.class', fingerprint: true
+            archiveArtifacts artifacts: 'repo/execution_summary.txt', fingerprint: true
             
-            // Archive source files
-            archiveArtifacts artifacts: 'repo/src/test/java/Java8Example/*.java', fingerprint: true
-            
-            // Cleanup if needed
+            // Cleanup
             bat '''
-                echo Cleaning up temporary files...
-                if exist repo\\classes_with_main.txt del repo\\classes_with_main.txt
+                echo Cleaning up...
+                timeout /t 2 /nobreak >nul
             '''
         }
 
-        /*************** SUCCESS NOTIFICATION ***************/
         success {
             echo '✅ All stages executed successfully! Sending success email...'
-
             emailext (
-                subject: "✅ Java 8 Examples Execution Report - Build #${BUILD_NUMBER}",
-                to: "ranjeetkumar7456@gmail.com",
-                attachmentsPattern: "repo/execution_report.txt, repo/bin/Java8Example/*.class",
+                subject: "✅ Java 8 Examples Execution Success - Build #${BUILD_NUMBER}",
                 body: """
                 <html>
-                <body style='font-family: Arial; background:#f4f6f7; padding:15px;'>
-                    <h2 style='color:#0071ce;'>Java 8 Examples Execution Successful</h2>
-                    <p>The Jenkins pipeline executed all Java 8 examples successfully.</p>
+                <body style="font-family: Arial, sans-serif; line-height:1.6; background-color:#f4f6f7; padding:15px;">
+                    <div style="max-width:700px; margin:auto; background-color:#ffffff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+                        <h2 style="color:#0071ce; border-bottom:2px solid #0071ce; padding-bottom:5px;">Java 8 Examples Execution Report</h2>
+                        <p>Hello Team,</p>
+                        <p>The Java 8 examples pipeline executed successfully.</p>
 
-                    <table border='1' cellpadding='6' style='border-collapse:collapse;'>
-                        <tr><td><b>Project</b></td><td>JavaPractice - Java 8 Examples</td></tr>
-                        <tr><td><b>Branch</b></td><td>Java8Feature</td></tr>
-                        <tr><td><b>Build Number</b></td><td>${BUILD_NUMBER}</td></tr>
-                        <tr><td><b>Build URL</b></td><td><a href='${BUILD_URL}'>${BUILD_URL}</a></td></tr>
-                        <tr><td><b>Status</b></td><td style='color:green;'><b>SUCCESS</b></td></tr>
-                        <tr><td><b>Date/Time</b></td><td>${new Date()}</td></tr>
-                        <tr><td><b>Location</b></td><td>src/test/java/Java8Example</td></tr>
-                    </table>
-                    
-                    <h3>Execution Details:</h3>
-                    <ul>
-                        <li>Classes compiled and executed from test directory</li>
-                        <li>Automatic detection of classes with main method</li>
-                        <li>Compiled classes archived as artifacts</li>
-                    </ul>
+                        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width:100%;">
+                            <tr style="background-color:#e6f0fa;"><td><b>Project</b></td><td>JavaPractice - Java 8 Examples</td></tr>
+                            <tr><td><b>Branch</b></td><td>Java8Feature</td></tr>
+                            <tr style="background-color:#e6f0fa;"><td><b>Build Number</b></td><td>${BUILD_NUMBER}</td></tr>
+                            <tr><td><b>Build URL</b></td><td><a href="${BUILD_URL}">${BUILD_URL}</a></td></tr>
+                            <tr style="background-color:#e6f0fa;"><td><b>Status</b></td><td><b style="color:green;">SUCCESS</b></td></tr>
+                            <tr><td><b>Source Location</b></td><td>src/test/java/Java8Example</td></tr>
+                            <tr style="background-color:#e6f0fa;"><td><b>Execution Time</b></td><td>${new Date()}</td></tr>
+                        </table>
+
+                        <p>All Java 8 example classes were compiled and executed successfully.</p>
+
+                        <p>Attached compiled classes and execution summary for reference.</p>
+
+                        <p>Regards,<br>
+                        <b>Automation Team</b></p>
+                    </div>
                 </body>
                 </html>
-                """
+                """,
+                to: "ranjeetkumar7456@gmail.com",
+                attachmentsPattern: "repo/bin/*.class, repo/execution_summary.txt"
             )
         }
 
-        /*************** FAILURE NOTIFICATION ***************/
         failure {
             echo '❌ Build failed! Sending failure email...'
-
             emailext (
                 subject: "❌ Java 8 Examples Execution Failed - Build #${BUILD_NUMBER}",
-                to: "ranjeetkumar7456@gmail.com",
                 body: """
                 <html>
-                <body style='font-family: Arial; background:#fff2f2; padding:15px;'>
-                    <h2 style='color:red;'>Java 8 Examples Execution Failed</h2>
-                    <p>The Jenkins build failed. Please check logs for compilation or execution errors.</p>
+                <body style="font-family: Arial, sans-serif; line-height:1.6; background-color:#fff2f2; padding:15px;">
+                    <div style="max-width:700px; margin:auto; background-color:#ffffff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+                        <h2 style="color:red; border-bottom:2px solid red; padding-bottom:5px;">Java 8 Examples Execution Failed</h2>
+                        <p>Hello Team,</p>
+                        <p>The Java 8 examples pipeline failed during execution.</p>
 
-                    <table border='1' cellpadding='6' style='border-collapse:collapse;'>
-                        <tr><td><b>Project</b></td><td>JavaPractice - Java 8 Examples</td></tr>
-                        <tr><td><b>Branch</b></td><td>Java8Feature</td></tr>
-                        <tr><td><b>Build Number</b></td><td>${BUILD_NUMBER}</td></tr>
-                        <tr><td><b>Build URL</b></td><td><a href='${BUILD_URL}'>${BUILD_URL}</a></td></tr>
-                        <tr><td><b>Status</b></td><td style='color:red;'><b>FAILED</b></td></tr>
-                        <tr><td><b>Date/Time</b></td><td>${new Date()}</td></tr>
-                        <tr><td><b>Location</b></td><td>src/test/java/Java8Example</td></tr>
-                    </table>
-                    
-                    <p><b>Possible Issues:</b></p>
-                    <ul>
-                        <li>Java files not found in src/test/java/Java8Example</li>
-                        <li>Compilation errors in Java code</li>
-                        <li>Classes don't have main method</li>
-                        <li>Missing dependencies</li>
-                    </ul>
-                    
-                    <p><b>Debug Steps:</b></p>
-                    <ol>
-                        <li>Check if files exist in GitHub repository</li>
-                        <li>Verify classes have public static void main method</li>
-                        <li>Test compilation locally first</li>
-                    </ol>
+                        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width:100%;">
+                            <tr style="background-color:#fce4e4;"><td><b>Project</b></td><td>JavaPractice - Java 8 Examples</td></tr>
+                            <tr><td><b>Branch</b></td><td>Java8Feature</td></tr>
+                            <tr style="background-color:#fce4e4;"><td><b>Build Number</b></td><td>${BUILD_NUMBER}</td></tr>
+                            <tr><td><b>Build URL</b></td><td><a href="${BUILD_URL}">${BUILD_URL}</a></td></tr>
+                            <tr style="background-color:#fce4e4;"><td><b>Status</b></td><td><b style="color:red;">FAILED</b></td></tr>
+                            <tr><td><b>Source Location</b></td><td>src/test/java/Java8Example</td></tr>
+                            <tr style="background-color:#fce4e4;"><td><b>Execution Time</b></td><td>${new Date()}</td></tr>
+                        </table>
+
+                        <p><b>Possible Issues:</b></p>
+                        <ul>
+                            <li>Java files not found in src/test/java/Java8Example</li>
+                            <li>Compilation errors</li>
+                            <li>Missing main methods in classes</li>
+                        </ul>
+
+                        <p>Please check the Jenkins console output for exact failure cause: <a href="${BUILD_URL}console">${BUILD_URL}console</a></p>
+
+                        <p>Regards,<br>
+                        <b>Automation Team</b></p>
+                    </div>
                 </body>
                 </html>
-                """
+                """,
+                to: "ranjeetkumar7456@gmail.com"
             )
         }
     }
