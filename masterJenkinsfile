@@ -1,0 +1,233 @@
+pipeline {
+    agent any
+    
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    
+    environment {
+        PHASE_1_STATUS = "PENDING"
+        PHASE_2_STATUS = "PENDING"
+        PHASE_3_STATUS = "PENDING"
+        PHASE_4_STATUS = "PENDING"
+        PHASE_5_STATUS = "PENDING"
+        OVERALL_STATUS = "RUNNING"
+    }
+    
+    stages {
+        /* ========== RUN PHASE 1 PIPELINE ========== */
+        stage('🚀 EXECUTE PHASE 1: SETUP') {
+            steps {
+                echo '🔧 STARTING PHASE 1 PIPELINE'
+                script {
+                    env.PHASE_1_STATUS = "RUNNING"
+                    
+                    // Run Phase 1 pipeline
+                    build job: 'JavaPractice-Phase1',
+                          wait: true,
+                          propagate: false
+                    
+                    // Check result
+                    def phase1Build = build(job: 'JavaPractice-Phase1', propagate: false)
+                    if (phase1Build.result == 'SUCCESS') {
+                        env.PHASE_1_STATUS = "✅ SUCCESS"
+                    } else {
+                        env.PHASE_1_STATUS = "❌ FAILED"
+                    }
+                }
+                echo '📋 PHASE 1 EXECUTION COMPLETE'
+            }
+        }
+        
+        /* ========== RUN PHASE 2 PIPELINE ========== */
+        stage('🔍 EXECUTE PHASE 2: VALIDATION') {
+            steps {
+                echo '📊 STARTING PHASE 2 PIPELINE'
+                script {
+                    env.PHASE_2_STATUS = "RUNNING"
+                    
+                    // Run Phase 2 pipeline
+                    build job: 'JavaPractice-Phase2',
+                          wait: true,
+                          propagate: false
+                    
+                    // Check result
+                    def phase2Build = build(job: 'JavaPractice-Phase2', propagate: false)
+                    if (phase2Build.result == 'SUCCESS') {
+                        env.PHASE_2_STATUS = "✅ SUCCESS"
+                    } else {
+                        env.PHASE_2_STATUS = "❌ FAILED"
+                    }
+                }
+                echo '📋 PHASE 2 EXECUTION COMPLETE'
+            }
+        }
+        
+        /* ========== RUN PHASE 3 PIPELINE ========== */
+        stage('⚙️ EXECUTE PHASE 3: COMPILATION') {
+            steps {
+                echo '🔨 STARTING PHASE 3 PIPELINE'
+                script {
+                    env.PHASE_3_STATUS = "RUNNING"
+                    
+                    // Run Phase 3 pipeline
+                    build job: 'JavaPractice-Phase3',
+                          wait: true,
+                          propagate: false
+                    
+                    // Check result
+                    def phase3Build = build(job: 'JavaPractice-Phase3', propagate: false)
+                    if (phase3Build.result == 'SUCCESS') {
+                        env.PHASE_3_STATUS = "✅ SUCCESS"
+                    } else {
+                        env.PHASE_3_STATUS = "❌ FAILED"
+                    }
+                }
+                echo '📋 PHASE 3 EXECUTION COMPLETE'
+            }
+        }
+        
+        /* ========== RUN PHASE 4 PIPELINE ========== */
+        stage('🧪 EXECUTE PHASE 4: TESTING') {
+            steps {
+                echo '🚀 STARTING PHASE 4 PIPELINE'
+                script {
+                    env.PHASE_4_STATUS = "RUNNING"
+                    
+                    // Run Phase 4 pipeline
+                    build job: 'JavaPractice-Phase4',
+                          wait: true,
+                          propagate: false
+                    
+                    // Check result
+                    def phase4Build = build(job: 'JavaPractice-Phase4', propagate: false)
+                    if (phase4Build.result == 'SUCCESS') {
+                        env.PHASE_4_STATUS = "✅ SUCCESS"
+                    } else {
+                        env.PHASE_4_STATUS = "❌ FAILED"
+                    }
+                }
+                echo '📋 PHASE 4 EXECUTION COMPLETE'
+            }
+        }
+        
+        /* ========== RUN PHASE 5 PIPELINE ========== */
+        stage('📦 EXECUTE PHASE 5: DEPLOYMENT') {
+            steps {
+                echo '🎯 STARTING PHASE 5 PIPELINE'
+                script {
+                    env.PHASE_5_STATUS = "RUNNING"
+                    
+                    // Run Phase 5 pipeline
+                    build job: 'JavaPractice-Phase5',
+                          wait: true,
+                          propagate: false
+                    
+                    // Check result
+                    def phase5Build = build(job: 'JavaPractice-Phase5', propagate: false)
+                    if (phase5Build.result == 'SUCCESS') {
+                        env.PHASE_5_STATUS = "✅ SUCCESS"
+                    } else {
+                        env.PHASE_5_STATUS = "❌ FAILED"
+                    }
+                }
+                echo '📋 PHASE 5 EXECUTION COMPLETE'
+            }
+        }
+        
+        /* ========== GENERATE DASHBOARD ========== */
+        stage('📊 GENERATE FINAL DASHBOARD') {
+            steps {
+                echo '📈 CREATING EXECUTION DASHBOARD'
+                script {
+                    // Create dashboard report
+                    bat '''
+                        echo "MASTER PIPELINE EXECUTION REPORT" > master_dashboard.txt
+                        echo "=================================" >> master_dashboard.txt
+                        echo "" >> master_dashboard.txt
+                        echo "BUILD INFORMATION:" >> master_dashboard.txt
+                        echo "  Master Build: #${BUILD_NUMBER}" >> master_dashboard.txt
+                        echo "  Execution Time: %DATE% %TIME%" >> master_dashboard.txt
+                        echo "  Master Job: ${JOB_NAME}" >> master_dashboard.txt
+                        echo "  Master URL: ${BUILD_URL}" >> master_dashboard.txt
+                        echo "" >> master_dashboard.txt
+                        
+                        echo "PHASE EXECUTION STATUS:" >> master_dashboard.txt
+                        echo "  Phase 1 (Setup): ${PHASE_1_STATUS}" >> master_dashboard.txt
+                        echo "  Phase 2 (Validation): ${PHASE_2_STATUS}" >> master_dashboard.txt
+                        echo "  Phase 3 (Compilation): ${PHASE_3_STATUS}" >> master_dashboard.txt
+                        echo "  Phase 4 (Testing): ${PHASE_4_STATUS}" >> master_dashboard.txt
+                        echo "  Phase 5 (Deployment): ${PHASE_5_STATUS}" >> master_dashboard.txt
+                        echo "" >> master_dashboard.txt
+                        
+                        echo "INDIVIDUAL PIPELINE LINKS:" >> master_dashboard.txt
+                        echo "  Phase 1: ${JENKINS_URL}job/JavaPractice-Phase1/" >> master_dashboard.txt
+                        echo "  Phase 2: ${JENKINS_URL}job/JavaPractice-Phase2/" >> master_dashboard.txt
+                        echo "  Phase 3: ${JENKINS_URL}job/JavaPractice-Phase3/" >> master_dashboard.txt
+                        echo "  Phase 4: ${JENKINS_URL}job/JavaPractice-Phase4/" >> master_dashboard.txt
+                        echo "  Phase 5: ${JENKINS_URL}job/JavaPractice-Phase5/" >> master_dashboard.txt
+                        echo "" >> master_dashboard.txt
+                        
+                        echo "OVERALL STATUS: " >> master_dashboard.txt
+                        if "%PHASE_1_STATUS%"=="✅ SUCCESS" if "%PHASE_2_STATUS%"=="✅ SUCCESS" if "%PHASE_3_STATUS%"=="✅ SUCCESS" if "%PHASE_4_STATUS%"=="✅ SUCCESS" if "%PHASE_5_STATUS%"=="✅ SUCCESS" (
+                            echo "  🎉 ALL 5 PHASES COMPLETED SUCCESSFULLY" >> master_dashboard.txt
+                        ) else (
+                            echo "  ⚠️ SOME PHASES HAD ISSUES" >> master_dashboard.txt
+                        )
+                        
+                        type master_dashboard.txt
+                    '''
+                    
+                    // Determine overall status
+                    if (env.PHASE_1_STATUS.contains('✅') && 
+                        env.PHASE_2_STATUS.contains('✅') && 
+                        env.PHASE_3_STATUS.contains('✅') && 
+                        env.PHASE_4_STATUS.contains('✅') && 
+                        env.PHASE_5_STATUS.contains('✅')) {
+                        env.OVERALL_STATUS = "✅ ALL 5 PHASES SUCCESS"
+                    } else {
+                        env.OVERALL_STATUS = "⚠️ SOME PHASES FAILED"
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '🔄 MASTER PIPELINE COMPLETION'
+            
+            // Archive master dashboard
+            archiveArtifacts artifacts: 'master_dashboard.txt', fingerprint: true
+            
+            // Print final summary
+            bat '''
+                echo ========================================
+                echo MASTER PIPELINE EXECUTION SUMMARY
+                echo ========================================
+                echo Phase 1: %PHASE_1_STATUS%
+                echo Phase 2: %PHASE_2_STATUS%
+                echo Phase 3: %PHASE_3_STATUS%
+                echo Phase 4: %PHASE_4_STATUS%
+                echo Phase 5: %PHASE_5_STATUS%
+                echo ----------------------------------------
+                echo Overall: %OVERALL_STATUS%
+                echo ========================================
+                echo Total Pipelines Executed: 5
+                echo Master Build: #${BUILD_NUMBER}
+                echo ========================================
+            '''
+        }
+        
+        success {
+            echo '🎉 MASTER PIPELINE EXECUTED ALL 5 PHASES SUCCESSFULLY!'
+        }
+        
+        failure {
+            echo '❌ MASTER PIPELINE ENCOUNTERED ISSUES'
+            echo 'Check individual phase pipelines for details'
+        }
+    }
+}
