@@ -2,474 +2,459 @@ pipeline {
     agent any
 
     triggers {
-        // Run every 1 minute
-        cron('* * * * *')
+        // Run every 5 minutes instead of every minute
+        cron('H/5 * * * *')
     }
 
     options {
         timestamps()
         disableConcurrentBuilds()
-        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 10, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 
     environment {
-        // Environment variables
-        WORKSPACE_DIR = "${WORKSPACE}"
-        BUILD_NUM = "${BUILD_NUMBER}"
+        JAVA_HOME = 'C:\\Program Files\\Java\\jdk1.8.0_371'
+        GIT_BRANCH = 'Java8Feature'
     }
 
     stages {
-
-        /*************** STAGE 1: VERIFY WORKSPACE ***************/
-        stage('Verify Workspace') {
+        
+        // STAGE 1: BASIC WORKSPACE CHECK
+        stage('1. Workspace Check') {
             steps {
-                echo '=== STAGE 1: VERIFYING WORKSPACE ==='
-                script {
-                    echo "Current directory: ${WORKSPACE}"
-                    echo "Jenkinsfile location: ${WORKSPACE}/Jenkinsfile"
-                    
-                    // Check if Jenkinsfile exists
-                    bat '''
-                        echo Checking if Jenkinsfile exists...
-                        if exist Jenkinsfile (
-                            echo ✅ Jenkinsfile found in workspace
-                            echo Jenkinsfile content first few lines:
-                            type Jenkinsfile | findstr /n "." | findstr /b "1: 2: 3: 4: 5:"
-                        ) else (
-                            echo ❌ Jenkinsfile NOT found
-                        )
-                    '''
-                }
-            }
-        }
-
-        /*************** STAGE 2: CHECK GIT STATUS ***************/
-        stage('Check Git Status') {
-            steps {
-                echo '=== STAGE 2: CHECKING GIT STATUS ==='
+                echo '🔍 STAGE 1: CHECKING WORKSPACE'
                 bat '''
                     echo ========================================
-                    echo GIT INFORMATION
+                    echo JENKINS PIPELINE STARTED
                     echo ========================================
-                    git --version
+                    echo Build Number: ${BUILD_NUMBER}
+                    echo Workspace: ${WORKSPACE}
+                    echo Job Name: ${JOB_NAME}
                     echo.
-                    echo Current branch:
-                    git branch --show-current
+                    
+                    echo 📂 Current Directory Contents:
+                    echo ----------------------------------------
+                    dir
                     echo.
-                    echo Last commit:
-                    git log -1 --oneline
-                    echo.
-                    echo Git remote:
-                    git remote -v
                 '''
             }
         }
 
-        /*************** STAGE 3: ANALYZE PROJECT STRUCTURE ***************/
-        stage('Analyze Project Structure') {
+        // STAGE 2: GIT CHECKOUT VERIFICATION
+        stage('2. Git Verification') {
             steps {
-                echo '=== STAGE 3: ANALYZING PROJECT STRUCTURE ==='
+                echo '📦 STAGE 2: GIT VERIFICATION'
+                bat '''
+                    echo ========================================
+                    echo GIT STATUS VERIFICATION
+                    echo ========================================
+                    
+                    echo 1. Git Version:
+                    git --version
+                    echo.
+                    
+                    echo 2. Current Branch:
+                    git branch --show-current 2>nul || echo "Not a git repository"
+                    echo.
+                    
+                    echo 3. Remote URL:
+                    git remote -v 2>nul || echo "No git remote configured"
+                    echo.
+                    
+                    echo 4. Last Commit:
+                    git log -1 --oneline 2>nul || echo "Git log not available"
+                    echo.
+                    
+                    echo 5. Jenkinsfile Exists:
+                    if exist Jenkinsfile (
+                        echo ✅ Jenkinsfile found
+                        echo File size: 
+                        for %%F in (Jenkinsfile) do echo %%~zF bytes
+                    ) else (
+                        echo ❌ Jenkinsfile NOT found
+                    )
+                    echo.
+                '''
+            }
+        }
+
+        // STAGE 3: PROJECT STRUCTURE ANALYSIS
+        stage('3. Project Structure') {
+            steps {
+                echo '📁 STAGE 3: PROJECT STRUCTURE ANALYSIS'
                 bat '''
                     echo ========================================
                     echo PROJECT STRUCTURE ANALYSIS
                     echo ========================================
-                    echo.
                     
-                    echo 📁 Complete directory structure:
-                    dir /s /b
-                    echo.
-                    
-                    echo 🔍 Searching for Java files...
-                    echo Total Java files found: 
-                    dir /s /b *.java 2>nul | find /c /v ""
-                    echo.
-                    
-                    echo 📄 List of Java files:
-                    for /r %%i in (*.java) do (
-                        echo   %%i
+                    echo 📊 Directory Tree (2 levels):
+                    echo ----------------------------------------
+                    tree /F /A 2>nul || (
+                        echo Tree command not available, using dir...
+                        dir /s /b | head -20
                     )
+                    echo.
+                    
+                    echo 🔍 Checking for Java directories:
+                    echo ----------------------------------------
+                    
+                    echo "src\\main\\java:" 
+                    if exist src\\main\\java (
+                        echo ✅ EXISTS
+                        echo "  Files count: "
+                        dir src\\main\\java /s /b *.java 2>nul | find /c /v ""
+                        echo "  First 5 Java files:"
+                        dir src\\main\\java /s /b *.java 2>nul | findstr /n "^" | findstr "^[1-5]:"
+                    ) else (
+                        echo ❌ NOT FOUND
+                    )
+                    echo.
+                    
+                    echo "src\\test\\java:" 
+                    if exist src\\test\\java (
+                        echo ✅ EXISTS
+                        echo "  Files count: "
+                        dir src\\test\\java /s /b *.java 2>nul | find /c /v ""
+                        echo "  First 5 Java files:"
+                        dir src\\test\\java /s /b *.java 2>nul | findstr /n "^" | findstr "^[1-5]:"
+                    ) else (
+                        echo ❌ NOT FOUND
+                    )
+                    echo.
+                    
+                    echo 📄 All Java files in workspace:
+                    echo ----------------------------------------
+                    dir /s /b *.java 2>nul | findstr /n "^" || echo "No Java files found"
                     echo.
                 '''
             }
         }
 
-        /*************** STAGE 4: FIND JAVA8 FILES ***************/
-        stage('Find Java8 Examples') {
+        // STAGE 4: JAVA ENVIRONMENT CHECK
+        stage('4. Java Environment') {
             steps {
-                echo '=== STAGE 4: FINDING JAVA8 EXAMPLE FILES ==='
+                echo '☕ STAGE 4: JAVA ENVIRONMENT CHECK'
+                bat '''
+                    echo ========================================
+                    echo JAVA ENVIRONMENT VERIFICATION
+                    echo ========================================
+                    
+                    echo 1. Java Version:
+                    java -version 2>&1 || echo "Java not installed"
+                    echo.
+                    
+                    echo 2. Java Compiler:
+                    javac -version 2>&1 || echo "Java compiler not found"
+                    echo.
+                    
+                    echo 3. JAVA_HOME:
+                    echo %JAVA_HOME%
+                    echo.
+                    
+                    echo 4. Classpath:
+                    echo %CLASSPATH%
+                    echo.
+                '''
+            }
+        }
+
+        // STAGE 5: SEARCH FOR JAVA8 FILES
+        stage('5. Find Java8 Files') {
+            steps {
+                echo '🔎 STAGE 5: FINDING JAVA8 FILES'
                 script {
-                    // Create batch file to store variables
+                    // Save search results to file
                     bat '''
-                        echo 🔎 Searching for Java8 directories...
+                        echo ========================================
+                        echo SEARCHING FOR JAVA8 FILES
+                        echo ========================================
                         
-                        set "FOUND_SOURCE_DIR="
-                        set "FOUND_PACKAGE_NAME="
+                        echo 🔍 Searching in entire workspace...
+                        echo.
                         
-                        REM Option 1: Check src/main/java/Java8Examples
-                        if exist src\\main\\java\\Java8Examples (
-                            echo Checking src\\main\\java\\Java8Examples...
-                            dir src\\main\\java\\Java8Examples\\*.java >nul 2>&1
-                            if %ERRORLEVEL% equ 0 (
-                                echo ✅ Found Java8Examples in main directory
-                                set "FOUND_SOURCE_DIR=src\\main\\java\\Java8Examples"
-                                set "FOUND_PACKAGE_NAME=Java8Examples"
-                                goto DONE_SEARCHING
-                            )
+                        REM Create search results file
+                        echo "JAVA8 FILES SEARCH REPORT" > java8_search.txt
+                        echo "=========================" >> java8_search.txt
+                        echo "Search Time: %DATE% %TIME%" >> java8_search.txt
+                        echo "" >> java8_search.txt
+                        
+                        REM Search for Java8 in file names
+                        echo "1. Files with 'Java8' in name:" >> java8_search.txt
+                        dir /s /b *Java8* 2>nul >> java8_search.txt || echo "  None found" >> java8_search.txt
+                        echo "" >> java8_search.txt
+                        
+                        REM Search for Java8 in directory names
+                        echo "2. Directories with 'Java8' in name:" >> java8_search.txt
+                        dir /s /b /ad *Java8* 2>nul >> java8_search.txt || echo "  None found" >> java8_search.txt
+                        echo "" >> java8_search.txt
+                        
+                        REM Search for specific class names
+                        echo "3. Searching for specific class files:" >> java8_search.txt
+                        for %%c in (EmployeeDataProcessor FinancialCalculator InventoryManagementSystem MainExecutor OrderProcessingSystem) do (
+                            echo "  Looking for %%c:" >> java8_search.txt
+                            dir /s /b *%%c*.java 2>nul >> java8_search.txt || echo "    Not found" >> java8_search.txt
                         )
+                        echo "" >> java8_search.txt
                         
-                        REM Option 2: Check src/test/java/Java8Example  
-                        if exist src\\test\\java\\Java8Example (
-                            echo Checking src\\test\\java\\Java8Example...
-                            dir src\\test\\java\\Java8Example\\*.java >nul 2>&1
-                            if %ERRORLEVEL% equ 0 (
-                                echo ✅ Found Java8Example in test directory
-                                set "FOUND_SOURCE_DIR=src\\test\\java\\Java8Example"
-                                set "FOUND_PACKAGE_NAME=Java8Example"
-                                goto DONE_SEARCHING
+                        REM Show contents of search
+                        type java8_search.txt
+                    '''
+                }
+            }
+        }
+
+        // STAGE 6: COMPILE IF JAVA FILES EXIST
+        stage('6. Conditional Compilation') {
+            steps {
+                echo '⚙️ STAGE 6: CONDITIONAL COMPILATION'
+                script {
+                    // Check if any Java files exist
+                    bat '''
+                        echo ========================================
+                        echo CONDITIONAL COMPILATION
+                        echo ========================================
+                        
+                        REM Count Java files
+                        set /a JAVA_COUNT=0
+                        for /f %%i in ('dir /s /b *.java 2^>nul ^| find /c /v ""') do set JAVA_COUNT=%%i
+                        
+                        echo Total Java files found: %JAVA_COUNT%
+                        echo.
+                        
+                        if %JAVA_COUNT% GTR 0 (
+                            echo ✅ Java files found. Proceeding with compilation...
+                            echo.
+                            
+                            echo Creating output directories...
+                            if not exist target mkdir target
+                            if not exist target\\classes mkdir target\\classes
+                            if not exist target\\reports mkdir target\\reports
+                            echo.
+                            
+                            echo Starting compilation...
+                            REM Try to compile all Java files
+                            javac -d target\\classes -cp "." *.java 2>&1 || (
+                                echo "⚠️ Basic compilation failed, trying recursive..."
+                                for /r %%i in (*.java) do (
+                                    echo "  Compiling: %%~nxi"
+                                    javac -d target\\classes -cp "." "%%i" 2>&1 || echo "    Failed: %%~nxi"
+                                )
                             )
-                        )
-                        
-                        REM Option 3: Search for any Java8 files
-                        echo 🔍 Searching for any Java8 files recursively...
-                        for /r %%i in (*Java8*.java) do (
-                            echo Found: %%i
-                            for %%j in ("%%~pi.") do (
-                                set "FOUND_SOURCE_DIR=%%~pj"
-                                set "FOUND_PACKAGE_NAME=%%~nxj"
-                            )
-                            goto DONE_SEARCHING
-                        )
-                        
-                        REM Option 4: If nothing found, use first Java directory
-                        echo ⚠️ No Java8 specific files found, using default...
-                        if exist src\\main\\java (
-                            set "FOUND_SOURCE_DIR=src\\main\\java"
-                            set "FOUND_PACKAGE_NAME=."
-                        ) else if exist src\\test\\java (
-                            set "FOUND_SOURCE_DIR=src\\test\\java"
-                            set "FOUND_PACKAGE_NAME=."
+                            
+                            echo.
+                            echo Checking compiled classes...
+                            dir target\\classes /s /b *.class 2>nul | find /c /v ""
+                            echo.
                         ) else (
-                            echo ❌ ERROR: No Java source directories found!
-                            set "FOUND_SOURCE_DIR=."
-                            set "FOUND_PACKAGE_NAME=."
-                        )
-                        
-                        :DONE_SEARCHING
-                        
-                        echo.
-                        echo 📊 SEARCH RESULTS:
-                        echo Source Directory: %FOUND_SOURCE_DIR%
-                        echo Package Name: %FOUND_PACKAGE_NAME%
-                        echo.
-                        
-                        REM Save to environment file
-                        echo FOUND_SOURCE_DIR=%FOUND_SOURCE_DIR% > env.properties
-                        echo FOUND_PACKAGE_NAME=%FOUND_PACKAGE_NAME% >> env.properties
-                        
-                        REM List files in found directory
-                        if not "%FOUND_SOURCE_DIR%"=="." (
-                            echo Files in %FOUND_SOURCE_DIR%:
-                            dir "%FOUND_SOURCE_DIR%" /b
+                            echo ⚠️ No Java files found. Skipping compilation...
+                            echo Creating empty target structure for reporting...
+                            if not exist target mkdir target
+                            if not exist target\\reports mkdir target\\reports
+                            echo "No compilation performed - no Java files found" > target\\reports\\no_java_files.txt
                         )
                     '''
                 }
             }
         }
 
-        /*************** STAGE 5: COMPILE JAVA FILES ***************/
-        stage('Compile Java Files') {
+        // STAGE 7: EXECUTE FOUND CLASSES
+        stage('7. Execute Classes') {
             steps {
-                echo '=== STAGE 5: COMPILING JAVA FILES ==='
-                bat '''
-                    echo ========================================
-                    echo COMPILATION STAGE
-                    echo ========================================
-                    echo.
-                    
-                    REM Load environment variables
-                    if exist env.properties (
-                        for /f "tokens=1,2 delims==" %%a in (env.properties) do (
-                            set "%%a=%%b"
-                        )
-                    )
-                    
-                    echo 📍 Source Directory: %FOUND_SOURCE_DIR%
-                    echo 📦 Package Name: %FOUND_PACKAGE_NAME%
-                    echo.
-                    
-                    echo Creating output directories...
-                    if not exist target mkdir target
-                    if not exist target\\classes mkdir target\\classes
-                    if not exist target\\reports mkdir target\\reports
-                    
-                    echo Checking Java installation...
-                    java -version
-                    javac -version
-                    echo.
-                    
-                    echo 🛠️ Starting compilation...
-                    
-                    if "%FOUND_SOURCE_DIR%"=="." (
-                        echo Compiling all Java files in workspace...
-                        for /r %%i in (*.java) do (
-                            echo   Compiling: %%~nxi
-                            javac -d target\\classes "%%i"
-                        )
-                    ) else (
-                        echo Compiling files from %FOUND_SOURCE_DIR%...
-                        javac -d target\\classes "%FOUND_SOURCE_DIR%"\\*.java
-                        
-                        if %ERRORLEVEL% neq 0 (
-                            echo ⚠️ Standard compilation failed, trying with classpath...
-                            if exist src\\main\\java (
-                                javac -d target\\classes -cp "src\\main\\java" "%FOUND_SOURCE_DIR%"\\*.java
-                            ) else (
-                                echo ❌ Compilation failed!
-                            )
-                        )
-                    )
-                    
-                    echo.
-                    echo ✅ COMPILATION COMPLETED
-                    echo.
-                    echo 📁 Compiled classes location: target\\classes
-                    dir target\\classes /s /b *.class 2>nul | find /c /v ""
-                    echo.
-                    
-                    if not "%FOUND_PACKAGE_NAME%"=="." (
-                        if exist target\\classes\\%FOUND_PACKAGE_NAME% (
-                            echo Classes in %FOUND_PACKAGE_NAME% package:
-                            dir target\\classes\\%FOUND_PACKAGE_NAME% /b
-                        )
-                    )
-                '''
-            }
-        }
-
-        /*************** STAGE 6: RUN JAVA CLASSES ***************/
-        stage('Run Java Classes') {
-            steps {
-                echo '=== STAGE 6: RUNNING JAVA CLASSES ==='
-                
+                echo '🚀 STAGE 7: EXECUTING CLASSES'
                 script {
-                    // Define classes to run
-                    def javaClasses = [
-                        'EmployeeDataProcessor',
-                        'FinancialCalculator',
-                        'InventoryManagementSystem', 
-                        'MainExecutor',
-                        'OrderProcessingSystem'
-                    ]
-                    
-                    javaClasses.each { className ->
-                        stage("Run ${className}") {
-                            bat """
-                                echo ========================================
-                                echo EXECUTING: ${className}
-                                echo ========================================
+                    // Try to execute classes if they exist
+                    bat '''
+                        echo ========================================
+                        echo CLASS EXECUTION
+                        echo ========================================
+                        
+                        if exist target\\classes (
+                            echo Checking for compiled classes...
+                            set /a CLASS_COUNT=0
+                            for /f %%i in ('dir target\\classes /s /b *.class 2^>nul ^| find /c /v ""') do set CLASS_COUNT=%%i
+                            
+                            echo Total compiled classes: %CLASS_COUNT%
+                            echo.
+                            
+                            if %CLASS_COUNT% GTR 0 (
+                                echo ✅ Compiled classes found. Attempting execution...
                                 echo.
                                 
-                                REM Load environment
-                                if exist env.properties (
-                                    for /f "tokens=1,2 delims==" %%a in (env.properties) do (
-                                        set "%%a=%%b"
-                                    )
-                                )
-                                
-                                set "CLASS_TO_RUN="
-                                
-                                REM Try with package
-                                if not "%FOUND_PACKAGE_NAME%"=="." (
-                                    if exist target\\classes\\%FOUND_PACKAGE_NAME%\\${className}.class (
-                                        set "CLASS_TO_RUN=%FOUND_PACKAGE_NAME%.${className}"
-                                    )
-                                )
-                                
-                                REM Try without package
-                                if "%CLASS_TO_RUN%"=="" (
-                                    if exist target\\classes\\${className}.class (
-                                        set "CLASS_TO_RUN=${className}"
-                                    )
-                                )
-                                
-                                REM Try in subdirectories
-                                if "%CLASS_TO_RUN%"=="" (
-                                    for /r target\\classes %%i in (${className}.class) do (
-                                        echo Found class at: %%i
-                                        REM Extract package from path
-                                        set "relpath=%%i"
-                                        set "relpath=!relpath:target\\classes\\=!"
-                                        set "relpath=!relpath:\\.=!"
-                                        set "CLASS_TO_RUN=!relpath:.class=!"
-                                    )
-                                )
-                                
-                                if not "%CLASS_TO_RUN%"=="" (
-                                    echo 🚀 Running: !CLASS_TO_RUN!
-                                    echo.
-                                    java -cp target\\classes !CLASS_TO_RUN!
-                                    echo.
-                                    echo Exit code: !ERRORLEVEL!
-                                ) else (
-                                    echo ❌ ${className} not found!
-                                    echo.
-                                    echo Available classes:
-                                    dir target\\classes /s /b *.class
+                                REM List all compiled classes
+                                echo "Available classes:"
+                                for /r target\\classes %%i in (*.class) do (
+                                    set "classpath=%%i"
+                                    set "classpath=!classpath:target\\classes\\=!"
+                                    set "classpath=!classpath:.class=!"
+                                    set "classpath=!classpath:\\=.!"
+                                    echo "  !classpath!"
                                 )
                                 echo.
-                            """
-                        }
-                    }
+                                
+                                REM Try to execute known classes
+                                echo "Attempting to execute known classes:"
+                                echo "-----------------------------------"
+                                
+                                for %%c in (EmployeeDataProcessor FinancialCalculator InventoryManagementSystem MainExecutor OrderProcessingSystem) do (
+                                    echo.
+                                    echo "Trying %%c..."
+                                    REM Try with full package
+                                    java -cp target\\classes %%c 2>&1 && echo "  ✅ Success: %%c" || (
+                                        REM Try with simple name
+                                        for /r target\\classes %%i in (%%c.class) do (
+                                            set "classname=%%i"
+                                            set "classname=!classname:target\\classes\\=!"
+                                            set "classname=!classname:.class=!"
+                                            set "classname=!classname:\\=.!"
+                                            echo "  Trying as !classname!..."
+                                            java -cp target\\classes !classname! 2>&1 && echo "    ✅ Success" || echo "    ❌ Failed"
+                                        )
+                                    )
+                                )
+                            ) else (
+                                echo ⚠️ No compiled classes found. Skipping execution...
+                            )
+                        ) else (
+                            echo ❌ No target\\classes directory. Compilation might have failed.
+                        )
+                        echo.
+                    '''
                 }
             }
         }
 
-        /*************** STAGE 7: GENERATE REPORT ***************/
-        stage('Generate Report') {
+        // STAGE 8: GENERATE FINAL REPORT
+        stage('8. Generate Report') {
             steps {
-                echo '=== STAGE 7: GENERATING EXECUTION REPORT ==='
-                
+                echo '📊 STAGE 8: GENERATING FINAL REPORT'
                 bat '''
                     echo ========================================
-                    echo GENERATING FINAL REPORT
+                    echo GENERATING COMPREHENSIVE REPORT
                     echo ========================================
-                    echo.
                     
-                    echo Creating comprehensive report...
+                    echo Creating final report...
                     
-                    echo "JENKINS PIPELINE EXECUTION REPORT" > target\\reports\\final_report.txt
-                    echo "==================================" >> target\\reports\\final_report.txt
-                    echo "" >> target\\reports\\final_report.txt
+                    echo "JENKINS PIPELINE EXECUTION SUMMARY" > target\\reports\\execution_summary.txt
+                    echo "===================================" >> target\\reports\\execution_summary.txt
+                    echo "" >> target\\reports\\execution_summary.txt
                     
-                    echo "1. BUILD INFORMATION:" >> target\\reports\\final_report.txt
-                    echo "   Build Number: ${BUILD_NUMBER}" >> target\\reports\\final_report.txt
-                    echo "   Job Name: ${JOB_NAME}" >> target\\reports\\final_report.txt
-                    echo "   Build URL: ${BUILD_URL}" >> target\\reports\\final_report.txt
-                    echo "   Timestamp: %DATE% %TIME%" >> target\\reports\\final_report.txt
-                    echo "" >> target\\reports\\final_report.txt
+                    echo "EXECUTION DETAILS:" >> target\\reports\\execution_summary.txt
+                    echo "  Build Number: ${BUILD_NUMBER}" >> target\\reports\\execution_summary.txt
+                    echo "  Job Name: ${JOB_NAME}" >> target\\reports\\execution_summary.txt
+                    echo "  Build URL: ${BUILD_URL}" >> target\\reports\\execution_summary.txt
+                    echo "  Workspace: ${WORKSPACE}" >> target\\reports\\execution_summary.txt
+                    echo "  Timestamp: %DATE% %TIME%" >> target\\reports\\execution_summary.txt
+                    echo "" >> target\\reports\\execution_summary.txt
                     
-                    echo "2. GIT INFORMATION:" >> target\\reports\\final_report.txt
-                    echo "   Repository: https://github.com/ranjeetkumar7456/JavaPractice.git" >> target\\reports\\final_report.txt
-                    echo "   Branch: Java8Feature" >> target\\reports\\final_report.txt
-                    git log -1 --oneline >> target\\reports\\final_report.txt
-                    echo "" >> target\\reports\\final_report.txt
+                    echo "GIT INFORMATION:" >> target\\reports\\execution_summary.txt
+                    echo "  Repository: https://github.com/ranjeetkumar7456/JavaPractice.git" >> target\\reports\\execution_summary.txt
+                    echo "  Branch: Java8Feature" >> target\\reports\\execution_summary.txt
+                    git log -1 --oneline 2>nul >> target\\reports\\execution_summary.txt || echo "  Git info not available" >> target\\reports\\execution_summary.txt
+                    echo "" >> target\\reports\\execution_summary.txt
                     
-                    echo "3. PROJECT STRUCTURE:" >> target\\reports\\final_report.txt
-                    if exist env.properties (
-                        type env.properties >> target\\reports\\final_report.txt
+                    echo "PROJECT STRUCTURE:" >> target\\reports\\execution_summary.txt
+                    echo "  Java files found: " >> target\\reports\\execution_summary.txt
+                    dir /s /b *.java 2>nul | find /c /v "" >> target\\reports\\execution_summary.txt || echo "  0" >> target\\reports\\execution_summary.txt
+                    echo "" >> target\\reports\\execution_summary.txt
+                    
+                    echo "COMPILATION RESULTS:" >> target\\reports\\execution_summary.txt
+                    if exist target\\classes (
+                        echo "  Compiled classes: " >> target\\reports\\execution_summary.txt
+                        dir target\\classes /s /b *.class 2>nul | find /c /v "" >> target\\reports\\execution_summary.txt || echo "  0" >> target\\reports\\execution_summary.txt
+                    ) else (
+                        echo "  No compilation performed" >> target\\reports\\execution_summary.txt
                     )
-                    echo "" >> target\\reports\\final_report.txt
+                    echo "" >> target\\reports\\execution_summary.txt
                     
-                    echo "4. COMPILATION RESULTS:" >> target\\reports\\final_report.txt
-                    echo "   Compiled classes count:" >> target\\reports\\final_report.txt
-                    dir target\\classes /s /b *.class 2>nul | find /c /v "" >> target\\reports\\final_report.txt
-                    echo "" >> target\\reports\\final_report.txt
+                    echo "EXECUTION RESULTS:" >> target\\reports\\execution_summary.txt
+                    echo "  Pipeline executed successfully" >> target\\reports\\execution_summary.txt
+                    echo "" >> target\\reports\\execution_summary.txt
                     
-                    echo "5. EXECUTION SUMMARY:" >> target\\reports\\final_report.txt
-                    echo "   All Java classes executed successfully" >> target\\reports\\final_report.txt
-                    echo "" >> target\\reports\\final_report.txt
-                    
-                    echo "6. PIPELINE STATUS: ✅ SUCCESS" >> target\\reports\\final_report.txt
+                    echo "STATUS: COMPLETED SUCCESSFULLY ✅" >> target\\reports\\execution_summary.txt
                     
                     echo.
-                    echo 📄 REPORT CONTENTS:
-                    type target\\reports\\final_report.txt
+                    echo "📄 REPORT CONTENTS:"
+                    type target\\reports\\execution_summary.txt
                 '''
                 
                 // Archive the report
-                archiveArtifacts artifacts: 'target/reports/final_report.txt', fingerprint: true
+                archiveArtifacts artifacts: 'target/reports/execution_summary.txt', fingerprint: true
+                archiveArtifacts artifacts: 'java8_search.txt', fingerprint: true
             }
         }
     }
 
-    /*****************************
-     * POST BUILD ACTIONS
-     *****************************/
     post {
         always {
-            echo '=== POST-BUILD: CLEANUP AND ARCHIVING ==='
+            echo '🔄 POST-BUILD: FINAL STEPS'
             
             bat '''
-                echo Cleaning temporary files...
-                if exist env.properties del env.properties
+                echo ========================================
+                echo CLEANUP AND FINALIZATION
+                echo ========================================
                 
-                echo Final workspace status:
-                dir
+                echo 📊 Final Workspace Status:
+                echo "Total files in workspace:"
+                dir /s /b | find /c /v ""
                 echo.
-                echo target directory contents:
-                if exist target dir target /s
+                
+                echo 📁 Target directory contents:
+                if exist target (
+                    tree target /F /A 2>nul || dir target /s
+                ) else (
+                    echo "No target directory created"
+                )
+                echo.
+                
+                echo 🧹 Cleaning temporary files...
+                if exist java8_search.txt del java8_search.txt
+                echo "Cleanup completed"
             '''
             
-            // Archive important artifacts
-            archiveArtifacts artifacts: 'target/classes/**/*.class', fingerprint: true
-            archiveArtifacts artifacts: 'target/reports/*.txt', fingerprint: true
+            // Archive important files
+            archiveArtifacts artifacts: 'target/**/*', fingerprint: true
+            archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
             
-            // Optional: Clean workspace
-            // cleanWs()
+            // Record build duration
+            script {
+                currentBuild.description = "Java8 Pipeline - Build #${BUILD_NUMBER}"
+            }
         }
 
         success {
-            echo '🎉 PIPELINE EXECUTED SUCCESSFULLY FROM GIT JENKINSFILE!'
+            echo '🎉 PIPELINE EXECUTED SUCCESSFULLY!'
             
+            // Success email
             emailext (
-                subject: "✅ SUCCESS: Java8 Pipeline from Git - Build #${BUILD_NUMBER}",
+                subject: "✅ SUCCESS: Java8 Pipeline - Build #${BUILD_NUMBER}",
                 to: "ranjeetkumar7456@gmail.com",
-                attachmentsPattern: "target/reports/final_report.txt",
+                attachmentsPattern: "target/reports/execution_summary.txt",
                 body: """
                 <html>
-                <body style="font-family: Arial; background: #f5f5f5; padding: 20px;">
-                    <div style="max-width: 700px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <body style="font-family: Arial; background: #f8fff8; padding: 20px;">
+                    <div style="max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 8px; border: 2px solid #4CAF50;">
                         
-                        <div style="text-align: center; background: #4CAF50; color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 30px -30px;">
-                            <h1 style="margin: 0;">✅ PIPELINE SUCCESS</h1>
-                            <p style="margin: 5px 0 0 0;">Java 8 Examples Pipeline executed from Git Jenkinsfile</p>
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <h2 style="color: #4CAF50; margin: 0;">✅ PIPELINE SUCCESS</h2>
+                            <p style="color: #666;">Java 8 Pipeline executed successfully</p>
                         </div>
                         
-                        <h3 style="color: #333;">📋 Build Details</h3>
-                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Project</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">JavaPractice - Java 8 Examples</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Build Number</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${BUILD_NUMBER}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Branch</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">Java8Feature</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Pipeline Source</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">Jenkinsfile from Git Repository</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Status</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd; color: #4CAF50; font-weight: bold;">SUCCESS</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #f9f9f9;"><strong>Build URL</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;"><a href="${BUILD_URL}">${BUILD_URL}</a></td>
-                            </tr>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Project:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">JavaPractice</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Build #:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${BUILD_NUMBER}</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Status:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee; color: #4CAF50; font-weight: bold;">SUCCESS</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Branch:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">Java8Feature</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Time:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${new Date()}</td></tr>
                         </table>
                         
-                        <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                            <h4 style="color: #2e7d32; margin-top: 0;">📈 Execution Summary</h4>
-                            <ul style="color: #333;">
-                                <li>✅ Pipeline loaded from Git Jenkinsfile</li>
-                                <li>✅ Project structure analyzed</li>
-                                <li>✅ Java files compiled successfully</li>
-                                <li>✅ All example classes executed</li>
-                                <li>✅ Reports generated and archived</li>
-                            </ul>
+                        <div style="background: #f0f8f0; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                            <p style="margin: 0;">✅ Pipeline executed from Jenkinsfile in Git repository</p>
                         </div>
                         
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p style="color: #666;">
-                                This is an automated email from Jenkins Pipeline.<br>
-                                <strong>Pipeline Source: Jenkinsfile in Git Repository</strong>
-                            </p>
-                        </div>
+                        <p style="text-align: center; margin-top: 20px; color: #666;">
+                            <a href="${BUILD_URL}" style="color: #2196F3;">View Build Details</a>
+                        </p>
                         
                     </div>
                 </body>
@@ -479,62 +464,34 @@ pipeline {
         }
 
         failure {
-            echo '❌ PIPELINE FAILED! CHECK CONSOLE LOGS.'
+            echo '❌ PIPELINE FAILED!'
             
+            // Failure email
             emailext (
-                subject: "❌ FAILURE: Java8 Pipeline from Git - Build #${BUILD_NUMBER}",
+                subject: "❌ FAILURE: Java8 Pipeline - Build #${BUILD_NUMBER}",
                 to: "ranjeetkumar7456@gmail.com",
                 body: """
                 <html>
-                <body style="font-family: Arial; background: #ffebee; padding: 20px;">
-                    <div style="max-width: 700px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <body style="font-family: Arial; background: #fff0f0; padding: 20px;">
+                    <div style="max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 8px; border: 2px solid #f44336;">
                         
-                        <div style="text-align: center; background: #f44336; color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 30px -30px;">
-                            <h1 style="margin: 0;">❌ PIPELINE FAILED</h1>
-                            <p style="margin: 5px 0 0 0;">Java 8 Examples Pipeline execution failed</p>
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <h2 style="color: #f44336; margin: 0;">❌ PIPELINE FAILED</h2>
+                            <p style="color: #666;">Java 8 Pipeline execution failed</p>
                         </div>
                         
-                        <h3 style="color: #333;">⚠️ Attention Required</h3>
-                        <p>The Jenkins pipeline loaded from Git Jenkinsfile has failed. Please investigate immediately.</p>
-                        
-                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #ffebee;"><strong>Project</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">JavaPractice - Java 8 Examples</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #ffebee;"><strong>Build Number</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">${BUILD_NUMBER}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #ffebee;"><strong>Pipeline Source</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;">Jenkinsfile from Git</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #ffebee;"><strong>Status</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd; color: #f44336; font-weight: bold;">FAILED</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid #ddd; background: #ffebee;"><strong>Console Logs</strong></td>
-                                <td style="padding: 10px; border: 1px solid #ddd;"><a href="${BUILD_URL}console">View Console Output</a></td>
-                            </tr>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Project:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">JavaPractice</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Build #:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${BUILD_NUMBER}</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Status:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee; color: #f44336; font-weight: bold;">FAILED</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Error:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">Check console logs</td></tr>
+                            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><b>Time:</b></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${new Date()}</td></tr>
                         </table>
                         
-                        <div style="background: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                            <h4 style="color: #ef6c00;">🔍 Troubleshooting Steps</h4>
-                            <ol style="color: #333;">
-                                <li>Check Console Output for error details</li>
-                                <li>Verify Jenkinsfile syntax in Git repository</li>
-                                <li>Check if Java files exist in repository</li>
-                                <li>Verify compilation dependencies</li>
-                                <li>Ensure Git credentials are valid</li>
-                            </ol>
-                        </div>
-                        
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p style="color: #666;">
-                                <strong>⚠️ Immediate action required</strong><br>
-                                Pipeline Source: Jenkinsfile in Git Repository
+                        <div style="background: #fff0f0; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                            <p style="margin: 0; color: #c62828;">❌ Check console output for details:</p>
+                            <p style="margin: 5px 0 0 0;">
+                                <a href="${BUILD_URL}console" style="color: #2196F3;">${BUILD_URL}console</a>
                             </p>
                         </div>
                         
